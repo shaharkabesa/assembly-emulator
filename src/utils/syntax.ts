@@ -22,11 +22,17 @@ export const highlightSyntax = (code: string): string => {
         // Group 3: Directive (ORG, DB, etc)
         // Group 4: Register (AX, BX, etc)
         // Group 5: Number (Hex or Dec)
-        const tokenRegex = /([a-z0-9_]+:)|(MOV|ADD|SUB|INC|DEC|MUL|DIV|AND|OR|XOR|NOT|INT|JMP|LOOP|HLT|RET|NOP)|(ORG|DB|DW|EQU)|(AX|BX|CX|DX|SP|BP|SI|DI|CS|DS|ES|SS|AH|AL|BH|BL|CH|CL|DH|DL)|(0x[0-9a-fA-F]+|[0-9a-fA-F]+h|\d+)/gi;
+        // Combined Regex for all tokens - ORDER MATTERS for collisions (e.g. ORG vs OR)
+        // 1. Label
+        // 2. Directive (DIRECTIVES must be checked BEFORE instructions if collisions exist, though ORG vs OR is main one)
+        // 3. Instruction
+        // 4. Register
+        // 5. Number
+        const tokenRegex = /([a-z0-9_]+:)|(ORG|DB|DW|EQU)|(MOV|ADD|SUB|INC|DEC|MUL|DIV|AND|OR|XOR|NOT|INT|CMP|JMP|JE|JZ|JNE|JNZ|JL|JLE|JG|JGE|JB|JBE|JA|JAE|JC|JNC|LOOP|HLT|RET|NOP)|(AX|BX|CX|DX|SP|BP|SI|DI|CS|DS|ES|SS|AH|AL|BH|BL|CH|CL|DH|DL)|(0x[0-9a-fA-F]+|[0-9a-fA-F]+h|\d+)/gi;
 
         let match;
         while ((match = tokenRegex.exec(codePart)) !== null) {
-            const [fullMatch, label, inst, dir, reg, num] = match;
+            const [fullMatch, label, dir, inst, reg, num] = match;
 
             // Append text before the match (whitespace, commas, etc.) escaped
             output += escapeHtml(codePart.substring(lastIndex, match.index));
