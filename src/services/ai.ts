@@ -1,5 +1,29 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
+export const listModels = async (apiKey: string): Promise<string[]> => {
+    if (!apiKey) throw new Error("API Key is required");
+
+    // We use fetch directly because the SDK's listModels might vary by version or be server-side only in some contexts.
+    // The REST endpoint is reliable: https://ai.google.dev/gemini-api/docs/models/gemini
+    try {
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`);
+        if (!response.ok) {
+            const err = await response.json();
+            throw new Error(err.error?.message || "Failed to list models");
+        }
+        const data = await response.json();
+        const models = data.models || [];
+
+        // Filter for models that support generateContent
+        return models
+            .filter((m: any) => m.supportedGenerationMethods?.includes("generateContent"))
+            .map((m: any) => m.name.replace("models/", "")); // Strip 'models/' prefix
+    } catch (e: any) {
+        console.error("Failed to list models:", e);
+        throw e;
+    }
+};
+
 export const generateAssemblyCode = async (apiKey: string, prompt: string, imageBase64?: string, modelName: string = "gemini-1.5-flash"): Promise<string> => {
     if (!apiKey) throw new Error("API Key is required");
 

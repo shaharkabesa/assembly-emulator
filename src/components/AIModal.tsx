@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { generateAssemblyCode } from '../services/ai';
+import { generateAssemblyCode, listModels } from '../services/ai';
 
 interface AIModalProps {
     isOpen: boolean;
@@ -11,8 +11,10 @@ const AIModal: React.FC<AIModalProps> = ({ isOpen, onClose, onCodeGenerated }) =
     const [apiKey, setApiKey] = useState('');
     const [prompt, setPrompt] = useState('');
     const [image, setImage] = useState<string | null>(null);
-    const [model, setModel] = useState('gemini-1.5-flash');
+    const [model, setModel] = useState('gemini-2.0-flash-exp');
+    const [availableModels, setAvailableModels] = useState<string[]>([]);
     const [loading, setLoading] = useState(false);
+    const [fetchingModels, setFetchingModels] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
@@ -42,6 +44,24 @@ const AIModal: React.FC<AIModalProps> = ({ isOpen, onClose, onCodeGenerated }) =
             setError(e.message);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleFetchModels = async () => {
+        if (!apiKey) {
+            setError("Enter API Key first.");
+            return;
+        }
+        setFetchingModels(true);
+        setError(null);
+        try {
+            const models = await listModels(apiKey);
+            setAvailableModels(models);
+            if (models.length > 0) setModel(models[0]);
+        } catch (e: any) {
+            setError("List Error: " + e.message);
+        } finally {
+            setFetchingModels(false);
         }
     };
 
@@ -87,17 +107,40 @@ const AIModal: React.FC<AIModalProps> = ({ isOpen, onClose, onCodeGenerated }) =
 
                     {/* Model Selection */}
                     <div>
-                        <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Model</label>
+                        <div className="flex justify-between items-center mb-1">
+                            <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Model</label>
+                            <button
+                                onClick={handleFetchModels}
+                                disabled={fetchingModels || !apiKey}
+                                className="text-[10px] text-purple-400 hover:text-purple-300 disabled:opacity-50 hover:underline"
+                            >
+                                {fetchingModels ? "Fetching..." : "Refresh List"}
+                            </button>
+                        </div>
                         <select
                             value={model}
                             onChange={(e) => setModel(e.target.value)}
                             className="w-full bg-slate-900 border border-white/10 rounded-lg p-2 text-white text-sm focus:border-purple-500 outline-none transition-colors"
                         >
-                            <option value="gemini-1.5-flash">Gemini 1.5 Flash (Default)</option>
-                            <option value="gemini-1.5-flash-001">Gemini 1.5 Flash-001</option>
-                            <option value="gemini-1.5-flash-8b">Gemini 1.5 Flash-8b</option>
-                            <option value="gemini-1.5-pro">Gemini 1.5 Pro</option>
+                            {availableModels.length > 0 ? (
+                                availableModels.map(m => (
+                                    <option key={m} value={m}>{m}</option>
+                                ))
+                            ) : (
+                                <>
+                                    <option value="gemini-2.0-flash-exp">Gemini 2.0 Flash Exp (Default)</option>
+                                    <option value="gemini-1.5-flash-8b">Gemini 1.5 Flash-8b (Fast/Free)</option>
+                                    <option value="gemini-1.5-flash">Gemini 1.5 Flash (Stable)</option>
+                                    <option value="gemini-2.0-flash">Gemini 2.0 Flash</option>
+                                    <option value="gemini-1.5-pro">Gemini 1.5 Pro</option>
+                                </>
+                            )}
                         </select>
+                        {availableModels.length === 0 && (
+                            <div className="text-[10px] text-amber-500/80 mt-1">
+                                Click "Refresh List" to see exactly what your key supports.
+                            </div>
+                        )}
                     </div>
 
                     {/* Image Upload */}
